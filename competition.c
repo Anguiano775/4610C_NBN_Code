@@ -33,23 +33,31 @@ void maxGyro(int deg);
 // following function.
 //
 /////////////////////////////////////////////////////////////////////////////////////////
-
+int shootFunctioningLeft = 0;
+int shootFunctioningRight = 0;
 int controlOfDrive = 0;
 void leftshoot()
 {
+	shootFunctioningLeft = 1;
 	motor[leftShooter] = 127;
 	wait1Msec(1000);
+	writeDebugStreamLine("In leftshoot");
 	while(SensorValue[shootLimitLeft] == 0 || vexRT[Btn5D]);
-	motor[leftShooter] = -0;
-	wait1Msec(75);
+	writeDebugStreamLine("exit leftshoot");
+	motor[leftShooter] = 18;
+	shootFunctioningLeft = 0;
+
 }
 void rightshoot()
 {
+	shootFunctioningRight = 1;
 	motor[rightShooter] = 127;
 	wait1Msec(1000);
+	writeDebugStreamLine("In rightshoot");
 	while(SensorValue[shootLimitRight] == 0 || vexRT[Btn5D]);
-	motor[rightShooter] = -0;
-	wait1Msec(75);
+	writeDebugStreamLine("exit rightshoot");
+	motor[rightShooter] = 18;
+	shootFunctioningRight = 0;
 }
 #define M_PI 3.1415
 // Converts degrees to radians.
@@ -273,40 +281,162 @@ void loadRightShooter() // Stop = Btn6D
 	motor[ballDirection] = 0;
 	controlOfIntake = 0;
 }
-task shooterRoutine
+task leftShootTask
 {
-	startTask(checkLoaded);
 	while(1)
 	{
-		int lastSensorValue = 0;
 		if(vexRT[Btn8D])
 		{
-			leftshoot();
+			leftShoot();
 		}
-		else if(vexRT[Btn7D])
+	}
+}
+task rightShootTask
+{
+	while(1)
+	{
+		if(vexRT[Btn7D])
 		{
 			rightshoot();
 		}
-
-		motor[leftShooter] = 0;
-		motor[rightShooter] = 0;
-		motor[ballDirection] = 0;
-		wait1Msec(50);
 	}
 }
+task shooterRoutine
+{
+	startTask(leftShootTask);
+	startTask(rightShootTask);
 
+}
 
+void waitForPress()
+{
+	while(nLCDButtons == 0){}
+	wait1Msec(5);
+}
+//----------------------------------------------------------------
 
+//Wait for Release------------------------------------------------
+void waitForRelease()
+{
+	while(nLCDButtons != 0){}
+	wait1Msec(5);
+}
 
+		int count = 0;
 void pre_auton()
 {
-	startTask(FPS);
+
 	// Set bStopTasksBetweenModes to false if you want to keep user created tasks running between
 	// Autonomous and Tele-Op modes. You will need to manage all user created tasks if set to false.
 	bStopTasksBetweenModes = true;
 
 	// All activities that occur before the competition starts
 	// Example: clearing encoders, setting servo positions, ...
+
+
+	//------------- Beginning of User Interface Code ---------------
+	//Clear LCD
+	clearLCDLine(0);
+	clearLCDLine(1);
+	const short leftButton = 1;
+const short centerButton = 2;
+const short rightButton = 4;
+
+	//Loop while center button is not pressed
+	while(nLCDButtons != centerButton && bIfiRobotDisabled)
+	{
+		//Switch case that allows the user to choose from 4 different options
+		switch(count){
+		case 0:
+			//Display first choice
+			displayLCDCenteredString(0, "Far Shot");
+			displayLCDCenteredString(1, "<		 Enter		>");
+			waitForPress();
+			//Increment or decrement "count" based on button press
+			if(nLCDButtons == leftButton)
+			{
+				waitForRelease();
+				count = 4;
+			}
+			else if(nLCDButtons == rightButton)
+			{
+				waitForRelease();
+				count++;
+			}
+			break;
+		case 1:
+			//Display second choice
+			displayLCDCenteredString(0, "Close Shot");
+			displayLCDCenteredString(1, "<		 Enter		>");
+			waitForPress();
+			//Increment or decrement "count" based on button press
+			if(nLCDButtons == leftButton)
+			{
+				waitForRelease();
+				count--;
+			}
+			else if(nLCDButtons == rightButton)
+			{
+				waitForRelease();
+				count++;
+			}
+			break;
+		case 2:
+			//Display third choice
+			displayLCDCenteredString(0, "No Auto");
+			displayLCDCenteredString(1, "<		 Enter		>");
+			waitForPress();
+			//Increment or decrement "count" based on button press
+			if(nLCDButtons == leftButton)
+			{
+				waitForRelease();
+				count--;
+			}
+			else if(nLCDButtons == rightButton)
+			{
+				waitForRelease();
+				count++;
+			}
+			break;
+		case 3:
+			//Display fourth choice
+			displayLCDCenteredString(0, "Programming");
+			displayLCDCenteredString(1, "<		 Enter		>");
+			waitForPress();
+			//Increment or decrement "count" based on button press
+			if(nLCDButtons == leftButton)
+			{
+				waitForRelease();
+				count--;
+			}
+			else if(nLCDButtons == rightButton)
+			{
+				waitForRelease();
+				count++;
+			}
+			break;
+		case 4:
+			//Display fourth choice
+			displayLCDCenteredString(0, "Blocking Auto");
+			displayLCDCenteredString(1, "<		 Enter		>");
+			waitForPress();
+			//Increment or decrement "count" based on button press
+			if(nLCDButtons == leftButton)
+			{
+				waitForRelease();
+				count--;
+			}
+			else if(nLCDButtons == rightButton)
+			{
+				waitForRelease();
+				count = 0;
+			}
+			break;
+		default:
+			count = 0;
+			break;
+		}
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -320,15 +450,69 @@ void pre_auton()
 
 task autonomous()
 {
-	leftshoot();
-	rightshoot();
-	motor[ballDirection] = 127;
-	motor[intake] = -127;
-	wait1Msec(1500);
-	motor[ballDirection] = -127;
-	wait1Msec(350);
-	motor[ballDirection] = 75;
-	rightshoot();
+	if(count == 0) // Far Shoot
+	{
+				motor[frontR] = 127;
+		motor[frontLeft]= -127;
+		motor[backLeft]= -127;
+		motor[backRight]= 127;
+		wait1Msec(750);
+		motor[frontR] = 0;
+		motor[frontLeft]= -0;
+		motor[backLeft]= -0;
+		motor[backRight]= 0;
+		leftshoot();
+		rightshoot();
+		motor[ballDirection] = 127;
+		motor[intake] = -127;
+		wait1Msec(1500);
+		motor[ballDirection] = -127;
+		wait1Msec(350);
+		motor[ballDirection] = 75;
+		rightshoot();
+	}
+	if(count == 1) // close Shoot
+	{
+		motor[frontR] = 127;
+		motor[frontLeft]= -127;
+		motor[backLeft]= -127;
+		motor[backRight]= 127;
+		wait1Msec(2850);
+		motor[frontR] = 0;
+		motor[frontLeft]= -0;
+		motor[backLeft]= -0;
+		motor[backRight]= 0;
+		leftshoot();
+		rightshoot();
+		motor[ballDirection] = 127;
+		motor[intake] = -127;
+		wait1Msec(1500);
+		motor[ballDirection] = -127;
+		wait1Msec(350);
+		motor[ballDirection] = 75;
+		rightshoot();
+	}
+	if(count == 2) // No Auto
+	{
+	}
+	if(count == 3) // Programming Skills
+	{
+		motor[leftShooter] = 127;
+		motor[rightShooter] = 127;
+		while(1);
+	}
+	if(count == 4) // Blocking Autp
+	{
+				motor[frontR] = 127;
+		motor[frontLeft]= -127;
+		motor[backLeft]= -127;
+		motor[backRight]= 127;
+		wait1Msec(3200);
+		motor[frontR] = 0;
+		motor[frontLeft]= -0;
+		motor[backLeft]= -0;
+		motor[backRight]= 0;
+	}
 
 }
 
@@ -344,16 +528,21 @@ task autonomous()
 task usercontrol()
 {
 	startTask(shooterRoutine);
-	startTask(FPS);
 	while (true)
 	{
 		const int ON = 1;
 		const int OFF = 0;
 		int fieldDrive = OFF;
+		int flipDrive = 1;
 		while(1)
 		{
-			int strafe = vexRT[Ch1];
-			int fwd = vexRT[Ch2];
+			if(vexRT[Btn7U])
+			{
+				while(vexRT[Btn7U]);
+				flipDrive = flipDrive == 1 ? -1 : 1;
+			}
+			int strafe = vexRT[Ch1] * flipDrive;
+			int fwd = vexRT[Ch2] * flipDrive;
 			if(fieldDrive == ON)
 			{
 				float curr_gyro_angle_radians = SensorValue[gyro]/10 * pi/180;
@@ -386,9 +575,23 @@ task usercontrol()
 				{
 					motor[ballDirection] = 127;
 				}
-				else if(vexRT[Btn7L])
+				else if(vexRT[Btn8L])
 				{
 					motor[ballDirection] = -127;
+				}
+				else
+				{
+					motor[ballDirection] = 0;
+				}
+				if(vexRT[Btn7U])
+				{
+					motor[leftShooter] = 127;
+					motor[rightShooter] = 127;
+				}
+				else if(shootFunctioningLeft == 0 && shootFunctioningRight == 0)
+				{
+					motor[leftShooter] = 18;
+					motor[rightShooter] = 18;
 				}
 			}
 		}
